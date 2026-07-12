@@ -17,6 +17,14 @@ temp*
 !start.sh
 !start-hproxy-v2.sh
 
+# 旧文件和备份
+*.bak
+*.old-format
+*.old
+
+# 压测脚本
+stress*.sh
+
 # IDE
 .vscode/
 .idea/
