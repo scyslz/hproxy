@@ -28,7 +28,7 @@ func ProxyHandler(cfg *config.Config) http.HandlerFunc {
 
 		if target == "" {
 			// DIRECT 模式：查真实 IP
-			log.Printf("[Proxy] [%s] DIRECT %s (TLS=%v)", serverAddr, host, r.TLS != nil)
+			log.Printf("[Proxy] [%s] DIRECT %s %s (TLS=%v)", serverAddr, r.Method, r.URL.Path, r.TLS != nil)
 
 			hostOnly := strings.Split(host, ":")[0]
 			isLocal := false
