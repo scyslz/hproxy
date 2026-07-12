@@ -2,6 +2,7 @@ package dns
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -54,6 +55,7 @@ func (d *Dnsmasq) UpdateDomains(domains map[string]string) error {
 
 	content := strings.Join(lines, "\n") + "\n"
 	if err := os.WriteFile(d.OutputFile, []byte(content), 0644); err != nil {
+		log.Printf("[Dnsmasq] 写文件失败 %s: %v", d.OutputFile, err)
 		return err
 	}
 
@@ -65,7 +67,7 @@ func (d *Dnsmasq) UpdateDomains(domains map[string]string) error {
 		d.lastModTime = info.ModTime()
 	}
 
-	config.DebugLog("[Dnsmasq] 已更新 %d 条域名到 %s", len(domains), d.OutputFile)
+	log.Printf("[Dnsmasq] 已更新 %d 条域名到 %s", len(domains), d.OutputFile)
 	return d.ensureConfig()
 }
 
@@ -96,6 +98,7 @@ func (d *Dnsmasq) ensureConfig() error {
 	}
 	data, err := os.ReadFile(d.ConfFile)
 	if err != nil {
+		log.Printf("[Dnsmasq] 读取主配置失败 %s: %v", d.ConfFile, err)
 		return err
 	}
 	content := string(data)
@@ -104,11 +107,16 @@ func (d *Dnsmasq) ensureConfig() error {
 	}
 	f, err := os.OpenFile(d.ConfFile, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
+		log.Printf("[Dnsmasq] 打开主配置失败 %s: %v", d.ConfFile, err)
 		return err
 	}
 	defer f.Close()
 	_, err = f.WriteString("\nconf-file=" + d.OutputFile + "\n")
-	return err
+	if err != nil {
+		log.Printf("[Dnsmasq] 写入主配置失败 %s: %v", d.ConfFile, err)
+		return err
+	}
+	return nil
 }
 
 func (d *Dnsmasq) Reload() error {
@@ -116,7 +124,9 @@ func (d *Dnsmasq) Reload() error {
 		return nil
 	}
 	cmd := exec.Command("systemctl", "reload", "dnsmasq")
-	cmd.Run()
+	if err := cmd.Run(); err != nil {
+		log.Printf("[Dnsmasq] 重载失败: %v", err)
+	}
 	config.DebugLog("[Dnsmasq] 已重载")
 	return nil
 }

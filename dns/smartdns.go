@@ -2,6 +2,7 @@ package dns
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -92,6 +93,7 @@ func (s *SmartDNS) UpdateDomains(domains map[string]string) error {
 
 	// 5. 写文件
 	if err := os.WriteFile(s.OutputFile, []byte(content), 0644); err != nil {
+		log.Printf("[SmartDNS] 写文件失败 %s: %v", s.OutputFile, err)
 		return err
 	}
 
@@ -108,7 +110,7 @@ func (s *SmartDNS) UpdateDomains(domains map[string]string) error {
 		s.lastDomains[k] = v
 	}
 	s.updateLastUpdateTime()
-	config.DebugLog("[SmartDNS] 已更新 %d 条域名到 %s", len(domains), s.OutputFile)
+	log.Printf("[SmartDNS] 已更新 %d 条域名到 %s", len(domains), s.OutputFile)
 
 	// 7. 确保主配置引用了生成文件
 	return s.ensureConfig()
@@ -168,6 +170,7 @@ func (s *SmartDNS) ensureConfig() error {
 	}
 	data, err := os.ReadFile(s.ConfFile)
 	if err != nil {
+		log.Printf("[SmartDNS] 读取主配置失败 %s: %v", s.ConfFile, err)
 		return err
 	}
 	content := string(data)
@@ -176,11 +179,13 @@ func (s *SmartDNS) ensureConfig() error {
 	}
 	f, err := os.OpenFile(s.ConfFile, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
+		log.Printf("[SmartDNS] 打开主配置失败 %s: %v", s.ConfFile, err)
 		return err
 	}
 	defer f.Close()
 	_, err = f.WriteString("\nconf-file " + s.OutputFile + "\n")
 	if err != nil {
+		log.Printf("[SmartDNS] 写入主配置失败 %s: %v", s.ConfFile, err)
 		return err
 	}
 	f.Sync()
@@ -196,7 +201,9 @@ func (s *SmartDNS) Reload() error {
 		return nil
 	}
 	cmd := exec.Command("kill", "-HUP", "$(pidof smartdns)")
-	cmd.Run()
+	if err := cmd.Run(); err != nil {
+		log.Printf("[SmartDNS] 重载失败: %v", err)
+	}
 	config.DebugLog("[SmartDNS] 已重载")
 	return nil
 }
