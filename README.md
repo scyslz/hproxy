@@ -96,6 +96,18 @@ GOOS=linux GOARCH=arm64 go build -o hproxy-arm64
   - `https://:443` - 纯 HTTPS 代理
   - `:4555` - 自动模式（同一个端口同时处理 HTTP 和 HTTPS，需要证书）
 
+#### 调试配置
+
+- **`debug`** - 是否打印调试日志（可选，默认 `false`）
+  - `false` - 只打印重要日志（代理请求、错误、DNS 更新结果）
+  - `true` - 额外打印调试日志（规则加载详情、DNS 变更检测、定时任务等）
+
+```json
+{
+  "debug": false
+}
+```
+
 #### DNS 配置
 
 - **`dns.provider`** - DNS 提供商名称（目前支持 `smartdns`）
