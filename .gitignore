@@ -12,7 +12,7 @@ logs/
 temp*
 *.tmp
 
-# 脚本（不需要版本控制）
+# 脚本（不需要版本控制，保留启动脚本）
 *.sh
 !start.sh
 !start-hproxy-v2.sh
