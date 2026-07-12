@@ -1,0 +1,34 @@
+{
+  "lan_ip": "192.168.100.1",
+  "log_file": "/tmp/hproxy/hproxy.log",
+  "cert": "lucky-multi.crt",
+  "key": "lucky-multi.key",
+  "admin_port": "18080",
+  "proxy_servers": [
+    "http://:80",
+    "https://:443",
+    ":4555"
+  ],
+  "dns": {
+    "provider": "smartdns",
+    "config": {
+      "conf_file": "/var/etc/smartdns/smartdns.conf",
+      "output_file": "/tmp/lucky-domains.conf"
+    }
+  },
+  "rule_sources": [
+    {
+      "type": "lucky_api",
+      "url": "https://192.168.100.1:2053/webservice/rules",
+      "target": "https://192.168.100.1:2053",
+      "proto": "prefer-https",
+      "enabled": true
+    },
+    {
+      "type": "local_file",
+      "path": "rules.json",
+      "format": "json",
+      "enabled": true
+    }
+  ]
+}

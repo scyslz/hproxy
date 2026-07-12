@@ -1,0 +1,19 @@
+{
+  "lucky_api": "https://192.168.100.1:2053/webservice/rules",
+  "lucky_api_target": "https://192.168.100.1:2053",
+  "api_proto": "prefer-https",
+  "proxy": "DIRECT",
+  "cert": "lucky-multi.crt",
+  "key": "lucky-multi.key",
+  "smartdns_ip": "192.168.100.1",
+  "smartdns_conf": "/tmp/lucky-domains.conf",
+  "smartdns_reload": "kill $(pidof smartdns) 2>/dev/null; rm -f /etc/smartdns/smartdns.cache; /usr/sbin/smartdns -f -c /var/etc/smartdns/smartdns.conf &",
+  "interval": "30s",
+  "rules": [
+    {
+      "host": "*.46.190564326.xyz",
+      "target": ["https://192.168.100.1:2053", "http://192.168.100.1:80"],
+      "proto": "prefer-https"
+    }
+  ]
+}

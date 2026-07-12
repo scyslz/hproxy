@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd /home/hq/lucky2smartdns && go run main\\.go$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
