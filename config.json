@@ -13,7 +13,8 @@
     "provider": "smartdns",
     "config": {
       "conf_file": "/var/etc/smartdns/smartdns.conf",
-      "output_file": "/tmp/lucky-domains.conf"
+      "output_file": "/tmp/lucky-domains.conf",
+      "reload_cmd": "kill -HUP $(pidof smartdns)"
     }
   },
   "rule_sources": [
