@@ -122,7 +122,7 @@ func setupLog(cfg *config.Config) {
 	f, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err == nil {
 		log.SetOutput(f)
-		log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+		log.SetFlags(log.LstdFlags)
 		log.Printf("[Main] 日志文件: %s", logFile)
 	} else {
 		log.Printf("[Main] 无法打开日志文件 %s: %v", logFile, err)
