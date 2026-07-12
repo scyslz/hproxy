@@ -1,0 +1,24 @@
+# 编译产物
+hproxy
+hproxy-*
+*.arm64
+*.tar.gz
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+temp*
+*.tmp
+
+# 脚本（不需要版本控制）
+*.sh
+!start-hproxy-v2.sh
+
+# IDE
+.vscode/
+.idea/
+
+# Go
+vendor/

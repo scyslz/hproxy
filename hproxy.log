@@ -1,7 +1,0 @@
-2026/07/11 16:10:37 [Main] 日志文件: ./hproxy.log
-2026/07/11 16:10:39 [Lucky API] 获取到 30 个域名
-2026/07/11 16:10:39 [SmartDNS] API 域名更新: 22 个
-2026/07/11 16:10:39 [SmartDNS] Rules 域名更新: 4 个
-2026/07/11 16:10:39 [SmartDNS] 读 smartdns.conf 失败: open /var/etc/smartdns/smartdns.conf: no such file or directory
-2026/07/11 16:10:39 [SmartDNS] ✅ 配置已更新并 reload
-2026/07/11 16:10:39 [Proxy] ❌ :80 端口被占用: listen tcp :80: bind: permission denied
