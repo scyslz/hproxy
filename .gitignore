@@ -14,6 +14,7 @@ temp*
 
 # 脚本（不需要版本控制）
 *.sh
+!start.sh
 !start-hproxy-v2.sh
 
 # IDE
