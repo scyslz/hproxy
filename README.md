@@ -52,7 +52,7 @@ GOOS=linux GOARCH=arm64 go build -o hproxy-arm64
     "config": {
       "conf_file": "/var/etc/smartdns/smartdns.conf",
       "output_file": "/tmp/lucky-domains.conf",
-      "reload_cmd": "kill -HUP $(pidof smartdns)"
+      "reload_cmd": "kill $(pidof smartdns) 2>/dev/null; rm -f /etc/smartdns/smartdns.cache; /usr/sbin/smartdns -f -c /var/etc/smartdns/smartdns.conf &"
     }
   },
   "rule_sources": [
@@ -113,7 +113,7 @@ GOOS=linux GOARCH=arm64 go build -o hproxy-arm64
 - **`dns.provider`** - DNS 提供商名称（目前支持 `smartdns`）
 - **`dns.config.conf_file`** - SmartDNS 主配置文件路径
 - **`dns.config.output_file`** - SmartDNS 域名配置文件路径（hproxy 写入）
-- **`dns.config.reload_cmd`** - SmartDNS 重载命令（可选，默认 `kill -HUP $(pidof smartdns)`）
+- **`dns.config.reload_cmd`** - SmartDNS 重载命令（可选，为空则跳过重载；默认 `kill $(pidof smartdns) 2>/dev/null; rm -f /etc/smartdns/smartdns.cache; /usr/sbin/smartdns -f -c /var/etc/smartdns/smartdns.conf &`）
 
 #### 规则来源配置
 

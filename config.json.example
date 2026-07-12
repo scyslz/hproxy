@@ -34,7 +34,7 @@
     "config": {
       "conf_file": "/var/etc/smartdns/smartdns.conf",
       "output_file": "/tmp/lucky-domains.conf",
-      "reload_cmd": "kill -HUP $(pidof smartdns)"
+      "reload_cmd": "kill $(pidof smartdns) 2>/dev/null; rm -f /etc/smartdns/smartdns.cache; /usr/sbin/smartdns -f -c /var/etc/smartdns/smartdns.conf &"
     }
   },
   "interval": "30s",
