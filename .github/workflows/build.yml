@@ -1,56 +1,53 @@
-name: Build hproxy
+name: Build & Release hproxy
 
 on:
   push:
-    branches: [ master, main ]
-  pull_request:
-    branches: [ master, main ]
-  release:
-    types: [ created ]
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
 
 jobs:
   build:
-    name: Build
     runs-on: ubuntu-latest
-    permissions:
-      contents: write  # 允许上传 Release 附件
+
     strategy:
       matrix:
         include:
           - goos: linux
             goarch: amd64
             name: linux-amd64
+
           - goos: linux
             goarch: arm64
             name: linux-arm64
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version: '1.21'
-    
-    - name: Build
-      env:
-        GOOS: ${{ matrix.goos }}
-        GOARCH: ${{ matrix.goarch }}
-      run: |
-        go mod tidy
-        go build -o hproxy-${{ matrix.name }} .
-    
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: hproxy-${{ matrix.name }}
-        path: hproxy-${{ matrix.name }}
-    
-    - name: Upload release asset
-      if: github.event_name == 'release'
-      uses: softprops/action-gh-release@v2
-      with:
-        files: hproxy-${{ matrix.name }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          go build -ldflags="-s -w" \
+            -o hproxy-${{ matrix.name }} .
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            hproxy-${{ matrix.name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
