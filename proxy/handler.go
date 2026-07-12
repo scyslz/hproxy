@@ -42,7 +42,7 @@ func ProxyHandler(cfg *config.Config) http.HandlerFunc {
 			if isLocal {
 				w.Header().Set("Connection", "close")
 				http.Error(w, "503 Loop detected (local address)", http.StatusServiceUnavailable)
-				log.Printf("[Proxy] ❌ 检测到本地地址: %s", host)
+				log.Printf("[Proxy] [%s] ❌ 检测到本地地址: %s %s %s", serverAddr, r.Method, r.URL.Path, host)
 				return
 			}
 
@@ -80,9 +80,9 @@ func ProxyHandler(cfg *config.Config) http.HandlerFunc {
 			if r.TLS != nil {
 				target = fmt.Sprintf("https://%s:%s", realIP, port)
 			}
-			log.Printf("[Proxy] [%s] ✅ DIRECT %s → %s", serverAddr, host, target)
+			log.Printf("[Proxy] [%s] ✅ DIRECT %s %s %s → %s", serverAddr, r.Method, r.URL.Path, host, target)
 			} else {
-			log.Printf("[Proxy] [%s] ✅ 规则匹配 %s → %s (客户端%s)", serverAddr, host, target, map[bool]string{true: "HTTPS", false: "HTTP"}[r.TLS != nil])
+			log.Printf("[Proxy] [%s] ✅ 规则匹配 %s %s %s → %s (客户端%s)", serverAddr, r.Method, r.URL.Path, host, target, map[bool]string{true: "HTTPS", false: "HTTP"}[r.TLS != nil])
 		}
 
 		proxy := &httputil.ReverseProxy{
