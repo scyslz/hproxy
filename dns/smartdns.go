@@ -15,6 +15,7 @@ import (
 type SmartDNS struct {
 	ConfFile     string // 主配置文件路径
 	OutputFile   string // 生成的域名配置文件路径
+	ReloadCmd    string // 重载命令（为空则跳过重载）
 	lastDomains  map[string]string // 上次写入的域名→IP 映射
 	lastUpdateTime time.Time // 上次更新时间（用于判断文件是否被外部修改）
 }
@@ -29,6 +30,9 @@ func NewSmartDNS(config map[string]interface{}) (*SmartDNS, error) {
 	}
 	if v, ok := config["output_file"]; ok {
 		s.OutputFile = v.(string)
+	}
+	if v, ok := config["reload_cmd"]; ok {
+		s.ReloadCmd = v.(string)
 	}
 	return s, nil
 }
@@ -197,10 +201,11 @@ func (s *SmartDNS) ensureConfig() error {
 }
 
 func (s *SmartDNS) Reload() error {
-	if s.ConfFile == "" {
+	if s.ReloadCmd == "" {
+		config.DebugLog("[SmartDNS] 未配置 reload_cmd，跳过重载")
 		return nil
 	}
-	cmd := exec.Command("sh", "-c", "kill -HUP $(pidof smartdns)")
+	cmd := exec.Command("sh", "-c", s.ReloadCmd)
 	if err := cmd.Run(); err != nil {
 		config.DebugLog("[SmartDNS] 重载失败（smartdns 可能未运行）: %v", err)
 	}

@@ -15,6 +15,7 @@ import (
 type Dnsmasq struct {
 	ConfFile   string
 	OutputFile string
+	ReloadCmd  string // 重载命令（为空则跳过重载）
 	lastDomains map[string]string
 	lastModTime time.Time
 }
@@ -29,6 +30,9 @@ func NewDnsmasq(config map[string]interface{}) (*Dnsmasq, error) {
 	}
 	if v, ok := config["output_file"]; ok {
 		d.OutputFile = v.(string)
+	}
+	if v, ok := config["reload_cmd"]; ok {
+		d.ReloadCmd = v.(string)
 	}
 	return d, nil
 }
@@ -120,10 +124,11 @@ func (d *Dnsmasq) ensureConfig() error {
 }
 
 func (d *Dnsmasq) Reload() error {
-	if d.ConfFile == "" {
+	if d.ReloadCmd == "" {
+		config.DebugLog("[Dnsmasq] 未配置 reload_cmd，跳过重载")
 		return nil
 	}
-	cmd := exec.Command("sh", "-c", "kill -HUP $(pidof dnsmasq)")
+	cmd := exec.Command("sh", "-c", d.ReloadCmd)
 	if err := cmd.Run(); err != nil {
 		config.DebugLog("[Dnsmasq] 重载失败（dnsmasq 可能未运行）: %v", err)
 	}
