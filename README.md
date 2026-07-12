@@ -46,11 +46,13 @@ GOOS=linux GOARCH=arm64 go build -o hproxy-arm64
     "http://:80",
     "https://:443"
   ],
+  "interval": "3m",
   "dns": {
     "provider": "smartdns",
     "config": {
       "conf_file": "/var/etc/smartdns/smartdns.conf",
-      "output_file": "/tmp/lucky-domains.conf"
+      "output_file": "/tmp/lucky-domains.conf",
+      "reload_cmd": "kill -HUP $(pidof smartdns)"
     }
   },
   "rule_sources": [
@@ -59,6 +61,11 @@ GOOS=linux GOARCH=arm64 go build -o hproxy-arm64
       "url": "https://192.168.100.1:2053/webservice/rules",
       "target": "https://192.168.100.1:2053",
       "proto": "prefer-https",
+      "filter": {
+        "rule_name": "Lucky_https",
+        "listen_port": 2053,
+        "domain_contains": "46."
+      },
       "enabled": true
     },
     {
@@ -71,15 +78,100 @@ GOOS=linux GOARCH=arm64 go build -o hproxy-arm64
 }
 ```
 
-### 配置说明
+### 配置项说明
 
-- `lan_ip` - 内网 IP（如 192.168.100.1）
-- `log_file` - 日志文件路径（归档目录为 `log_file` 同目录下的 `logs/`）
-- `cert` / `key` - HTTPS 证书和密钥
-- `admin_port` - 管理接口端口
-- `proxy_servers` - 代理监听地址（支持 `http://`、 `https://` 或 `:port`）
-- `dns` - DNS 提供商配置（目前支持 smartdns）
-- `rule_sources` - 规则来源配置
+#### 基础配置
+
+- **`lan_ip`** - 内网 IP 地址（如 `192.168.100.1`），用于 SmartDNS 域名解析
+- **`log_file`** - 日志文件路径，归档目录为 `log_file` 同目录下的 `logs/`（如 `/tmp/hproxy/hproxy.log` → 归档到 `/tmp/hproxy/logs/`）
+- **`cert`** - HTTPS 证书文件路径
+- **`key`** - HTTPS 私钥文件路径
+- **`admin_port`** - 管理接口监听端口（如 `18080`）
+- **`interval`** - 定时更新间隔（如 `3m` 表示 3 分钟，默认 3 分钟）
+
+#### 代理服务器配置
+
+- **`proxy_servers`** - 代理监听地址数组，支持以下格式：
+  - `http://:80` - 纯 HTTP 代理
+  - `https://:443` - 纯 HTTPS 代理
+  - `:4555` - 自动模式（同一个端口同时处理 HTTP 和 HTTPS，需要证书）
+
+#### DNS 配置
+
+- **`dns.provider`** - DNS 提供商名称（目前支持 `smartdns`）
+- **`dns.config.conf_file`** - SmartDNS 主配置文件路径
+- **`dns.config.output_file`** - SmartDNS 域名配置文件路径（hproxy 写入）
+- **`dns.config.reload_cmd`** - SmartDNS 重载命令（可选，默认 `kill -HUP $(pidof smartdns)`）
+
+#### 规则来源配置
+
+- **`rule_sources`** - 规则来源数组，支持两种类型：
+
+##### 类型 1：`lucky_api`（Lucky API）
+
+从 Lucky 软路由的 API 获取规则：
+
+```json
+{
+  "type": "lucky_api",
+  "url": "https://192.168.100.1:2053/webservice/rules",
+  "target": "https://192.168.100.1:2053",
+  "proto": "prefer-https",
+  "filter": {
+    "rule_name": "Lucky_https",
+    "listen_port": 2053,
+    "domain_contains": "46."
+  },
+  "enabled": true
+}
+```
+
+- `url` - Lucky API 地址
+- `target` - 规则目标地址（回源地址）
+- `proto` - 协议类型：`strict` / `prefer-https` / `prefer-http` / `force-https` / `force-http` / `direct`
+- `filter` - 过滤条件（可选）
+  - `rule_name` - 规则名称过滤
+  - `listen_port` - 监听端口过滤
+  - `domain_contains` - 域名包含字符串过滤
+
+##### 类型 2：`local_file`（本地文件）
+
+从本地 JSON 文件读取规则：
+
+```json
+{
+  "type": "local_file",
+  "path": "rules.json",
+  "format": "json",
+  "enabled": true
+}
+```
+
+- `path` - 本地规则文件路径
+- `format` - 文件格式（目前只支持 `json`）
+
+#### 规则文件格式
+
+`rules.json` 格式：
+
+```json
+[
+  {
+    "host": "example.com",
+    "target": ["https://192.168.100.1:2053"],
+    "proto": "prefer-https"
+  },
+  {
+    "host": "*.example.com",
+    "target": ["https://192.168.100.1:2053"],
+    "proto": "prefer-https"
+  }
+]
+```
+
+- `host` - 域名（支持通配符 `*.example.com`）
+- `target` - 目标地址数组
+- `proto` - 协议类型
 
 ## 运行
 
