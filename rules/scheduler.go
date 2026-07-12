@@ -1,7 +1,6 @@
 package rules
 
 import (
-	"log"
 	"time"
 
 	"hproxy/config"
@@ -34,7 +33,7 @@ func StartScheduler(cfg *config.Config, dnsProvider dns.DNSProvider) *Scheduler 
 	}
 
 	go s.run()
-	log.Printf("[Scheduler] 定时更新已启动，间隔: %v", interval)
+	config.DebugLog("[Scheduler] 定时更新已启动，间隔: %v", interval)
 	return s
 }
 
@@ -50,7 +49,7 @@ func (s *Scheduler) run() {
 		case <-ticker.C:
 			s.update()
 		case <-s.stop:
-			log.Printf("[Scheduler] 定时更新已停止")
+			config.DebugLog("[Scheduler] 定时更新已停止")
 			return
 		}
 	}
@@ -71,7 +70,7 @@ func (s *Scheduler) update() {
 			domains[d] = ip
 		}
 		if err := s.dnsProvider.UpdateDomains(domains); err != nil {
-			log.Printf("[Scheduler] DNS 更新失败: %v", err)
+			config.DebugLog("[Scheduler] DNS 更新失败: %v", err)
 		}
 		s.dnsProvider.Reload()
 	}

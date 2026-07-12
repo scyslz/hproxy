@@ -2,11 +2,12 @@ package dns
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
+
+	"hproxy/config"
 )
 
 // SmartDNS 实现 DNSProvider 接口
@@ -41,24 +42,24 @@ func (s *SmartDNS) UpdateDomains(domains map[string]string) error {
 
 	// 1. 检查域名集合是否有变化
 	if !s.compareDomains(domains) {
-		log.Printf("[SmartDNS] 域名有变化")
+		config.DebugLog("[SmartDNS] 域名有变化")
 		needUpdate = true
 	}
 
 	// 2. 检查 OutputFile 是否被外部修改
 	if s.isFileModified(s.OutputFile, s.lastUpdateTime) {
-		log.Printf("[SmartDNS] 域名配置文件被外部修改")
+		config.DebugLog("[SmartDNS] 域名配置文件被外部修改")
 		needUpdate = true
 	}
 
 	// 3. 检查 ConfFile 是否被外部修改
 	if s.ConfFile != "" && s.isFileModified(s.ConfFile, s.lastUpdateTime) {
-		log.Printf("[SmartDNS] 主配置文件被外部修改")
+		config.DebugLog("[SmartDNS] 主配置文件被外部修改")
 		needUpdate = true
 	}
 
 	if !needUpdate {
-		log.Printf("[SmartDNS] 无变化，跳过更新")
+		config.DebugLog("[SmartDNS] 无变化，跳过更新")
 		return nil
 	}
 
@@ -107,7 +108,7 @@ func (s *SmartDNS) UpdateDomains(domains map[string]string) error {
 		s.lastDomains[k] = v
 	}
 	s.updateLastUpdateTime()
-	log.Printf("[SmartDNS] 已更新 %d 条域名到 %s", len(domains), s.OutputFile)
+	config.DebugLog("[SmartDNS] 已更新 %d 条域名到 %s", len(domains), s.OutputFile)
 
 	// 7. 确保主配置引用了生成文件
 	return s.ensureConfig()
@@ -186,7 +187,7 @@ func (s *SmartDNS) ensureConfig() error {
 
 	// 更新最后更新时间
 	s.updateLastUpdateTime()
-	log.Printf("[SmartDNS] 已更新主配置文件")
+	config.DebugLog("[SmartDNS] 已更新主配置文件")
 	return nil
 }
 
@@ -196,7 +197,7 @@ func (s *SmartDNS) Reload() error {
 	}
 	cmd := exec.Command("kill", "-HUP", "$(pidof smartdns)")
 	cmd.Run()
-	log.Printf("[SmartDNS] 已重载")
+	config.DebugLog("[SmartDNS] 已重载")
 	return nil
 }
 

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -10,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -32,6 +35,7 @@ func main() {
 		log.Printf("[Cert] 警告: %v", err)
 	}
 	setupLog(cfg)
+	config.SetDebug(cfg.Debug)
 	dnsProvider, _ := initDNSProvider(cfg)
 
 	// 初始更新 DNS
@@ -113,7 +117,7 @@ func setupLog(cfg *config.Config) {
 		logDir = filepath.Dir(cfg.LogFile) + "/logs"
 	}
 	os.MkdirAll(logDir, 0755)
-	
+
 	logFile := filepath.Join(logDir, time.Now().Format("2006-01-02")+".log")
 	f, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err == nil {
@@ -147,6 +151,12 @@ func parseAddr(addr string) (string, string) {
 func startServer(addr string, handler http.HandlerFunc, cfg *config.Config) {
 	scheme, realAddr := parseAddr(addr)
 
+	// 包装 handler，注入 server_addr 到 context
+	wrappedHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = r.WithContext(context.WithValue(r.Context(), "server_addr", realAddr))
+		handler(w, r)
+	})
+
 	// 获取证书
 	cert := cfg.Cert
 	key := cfg.Key
@@ -155,7 +165,7 @@ func startServer(addr string, handler http.HandlerFunc, cfg *config.Config) {
 	case "http":
 		go func() {
 			log.Printf("[Server] HTTP %s", realAddr)
-			if err := http.ListenAndServe(realAddr, handler); err != nil {
+			if err := http.ListenAndServe(realAddr, wrappedHandler); err != nil {
 				log.Printf("[Server] %s 监听失败: %v", realAddr, err)
 			}
 		}()
@@ -166,7 +176,7 @@ func startServer(addr string, handler http.HandlerFunc, cfg *config.Config) {
 		}
 		go func() {
 			log.Printf("[Server] HTTPS %s", realAddr)
-			if err := http.ListenAndServeTLS(realAddr, cert, key, handler); err != nil {
+			if err := http.ListenAndServeTLS(realAddr, cert, key, wrappedHandler); err != nil {
 				log.Printf("[Server] %s 监听失败: %v", realAddr, err)
 			}
 		}()
@@ -209,56 +219,85 @@ func startServer(addr string, handler http.HandlerFunc, cfg *config.Config) {
 				}
 				
 				// 判断是 HTTP 还是 HTTPS
-				go handleConnection(conn, handler, &tlsCert)
+					go handleConnection(conn, handler, &tlsCert, realAddr)
 			}
 		}()
 	}
 }
 
 // handleConnection 处理连接，根据第一个字节判断是 HTTP 还是 HTTPS
-func handleConnection(conn net.Conn, handler http.HandlerFunc, tlsCert *tls.Certificate) {
+func handleConnection(conn net.Conn, handler http.HandlerFunc, tlsCert *tls.Certificate, serverAddr string) {
 	defer conn.Close()
-	
-	// 读取第一个字节（不消耗数据）
-	buf := make([]byte, 1)
-	conn.SetReadDeadline(time.Now().Add(1 * time.Second))
-	n, err := conn.Read(buf)
-	if err != nil || n == 0 {
+
+	// 读取前几个字节用于判断协议
+	peek := make([]byte, 5)
+
+	conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+	n, err := io.ReadAtLeast(conn, peek, 1)
+	if err != nil {
 		return
 	}
-	
-	// 判断是否是 TLS（第一个字节是 0x16）
-	if buf[0] == 0x16 {
-		// HTTPS：TLS 握手
-		tlsConn := tls.Server(&readConn{Conn: conn, firstByte: buf[0]}, &tls.Config{
-			Certificates: []tls.Certificate{*tlsCert},
-		})
-		defer tlsConn.Close()
-		
-		// 处理 HTTPS 请求
-		server := &http.Server{Handler: handler}
-		server.Serve(&singleConnListener{conn: tlsConn})
-	} else {
-		// HTTP：直接处理
-		// 把第一个字节写回去
-		conn.Write(buf)
-		server := &http.Server{Handler: handler}
-		server.Serve(&singleConnListener{conn: conn})
-	}
-}
 
+	// 清除探测超时
+	conn.SetReadDeadline(time.Time{})
+
+	// 把已经读取的数据放回读取流
+	bufferedConn := &readConn{
+		Conn: conn,
+		reader: io.MultiReader(
+			bytes.NewReader(peek[:n]),
+			conn,
+		),
+	}
+
+	var serveConn net.Conn = bufferedConn
+
+	// 判断 TLS
+	if isTLS(peek[:n]) {
+		serveConn = tls.Server(bufferedConn, &tls.Config{
+			Certificates: []tls.Certificate{
+				*tlsCert,
+			},
+		})
+	}
+
+	// 包装 handler，注入 server_addr
+	wrappedHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = r.WithContext(context.WithValue(r.Context(), "server_addr", serverAddr))
+		handler(w, r)
+	})
+
+	server := &http.Server{
+		Handler: wrappedHandler,
+	}
+
+	server.Serve(&singleConnListener{
+		conn: serveConn,
+	})
+}
+func isTLS(buf []byte) bool {
+	return len(buf) >= 3 &&
+		buf[0] == 0x16 &&
+		buf[1] == 0x03 &&
+		buf[2] >= 0x01 &&
+		buf[2] <= 0x04
+}
 // singleConnListener 包装单个连接为 Listener
 type singleConnListener struct {
 	conn net.Conn
-	done bool
+	once sync.Once
 }
 
 func (l *singleConnListener) Accept() (net.Conn, error) {
-	if l.done {
-		return nil, io.EOF
+	var c net.Conn
+	l.once.Do(func() {
+		c = l.conn
+	})
+	if c == nil {
+		// 连接已返回过一次，阻塞等待（server 会在处理完后关闭连接）
+		select {}
 	}
-	l.done = true
-	return l.conn, nil
+	return c, nil
 }
 
 func (l *singleConnListener) Close() error {
@@ -272,15 +311,9 @@ func (l *singleConnListener) Addr() net.Addr {
 // readConn 包装 net.Conn，支持预读第一个字节
 type readConn struct {
 	net.Conn
-	firstByte byte
-	read      bool
+	reader io.Reader
 }
 
-func (c *readConn) Read(b []byte) (int, error) {
-	if !c.read {
-		b[0] = c.firstByte
-		c.read = true
-		return 1, nil
-	}
-	return c.Conn.Read(b)
+func (c *readConn) Read(p []byte) (int, error) {
+	return c.reader.Read(p)
 }

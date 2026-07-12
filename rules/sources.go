@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"os"
@@ -69,7 +68,7 @@ func (c *RuleChain) LoadAll() bool {
 	for _, provider := range c.providers {
 		rules, c, err := provider.Load()
 		if err != nil {
-			log.Printf("[RuleChain] 来源 %s 加载失败: %v", provider.Name(), err)
+			config.DebugLog("[RuleChain] 来源 %s 加载失败: %v", provider.Name(), err)
 			continue
 		}
 		if c {
@@ -79,7 +78,7 @@ func (c *RuleChain) LoadAll() bool {
 		mergeRules(rules, provider.Name())
 	}
 
-	log.Printf("[RuleChain] 加载完成: 精确=%d, 通配=%d",
+	config.DebugLog("[RuleChain] 加载完成: 精确=%d, 通配=%d",
 		len(Rules), len(WildRules))
 	return changed
 }
@@ -93,7 +92,7 @@ func mergeRules(rules map[string]config.Rule, sourceName string) {
 			wildcard := strings.TrimPrefix(host, "*")
 			rule.Source = sourceName
 			WildRules[wildcard] = rule
-			log.Printf("[RuleChain] 通配符规则: %s (来源: %s)", wildcard, sourceName)
+			config.DebugLog("[RuleChain] 通配符规则: %s (来源: %s)", wildcard, sourceName)
 		} else {
 			// 普通规则
 			rule.Source = sourceName
@@ -120,7 +119,7 @@ func (s *LuckyAPISource) Name() string {
 func (s *LuckyAPISource) Load() (map[string]config.Rule, bool, error) {
 	rules, err := fetchDomains(s.URL, s.Target, s.Proto, s.Filter)
 	if err != nil {
-		log.Printf("[LuckyAPI] 获取失败: %v，尝试缓存", err)
+		config.DebugLog("[LuckyAPI] 获取失败: %v，尝试缓存", err)
 		return s.loadCache()
 	}
 
@@ -318,7 +317,7 @@ func fetchDomains(apiURL, target, proto string, filter *config.APIFilter) (map[s
 		}
 	}
 
-	log.Printf("[Lucky API] 获取到 %d 个域名", len(result))
+	config.DebugLog("[Lucky API] 获取到 %d 个域名", len(result))
 	return result, nil
 }
 

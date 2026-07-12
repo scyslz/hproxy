@@ -2,11 +2,12 @@ package dns
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
+
+	"hproxy/config"
 )
 
 // Dnsmasq 实现 DNSProvider 接口
@@ -38,12 +39,12 @@ func (d *Dnsmasq) Name() string {
 func (d *Dnsmasq) UpdateDomains(domains map[string]string) error {
 	// 变更检测
 	if d.compareDomains(domains) {
-		log.Printf("[Dnsmasq] 域名无变化，跳过更新")
+		config.DebugLog("[Dnsmasq] 域名无变化，跳过更新")
 		return nil
 	}
 
 	if d.isConfigModified() {
-		log.Printf("[Dnsmasq] 配置文件被外部修改，强制更新")
+		config.DebugLog("[Dnsmasq] 配置文件被外部修改，强制更新")
 	}
 
 	lines := make([]string, 0, len(domains))
@@ -64,7 +65,7 @@ func (d *Dnsmasq) UpdateDomains(domains map[string]string) error {
 		d.lastModTime = info.ModTime()
 	}
 
-	log.Printf("[Dnsmasq] 已更新 %d 条域名到 %s", len(domains), d.OutputFile)
+	config.DebugLog("[Dnsmasq] 已更新 %d 条域名到 %s", len(domains), d.OutputFile)
 	return d.ensureConfig()
 }
 
@@ -116,6 +117,6 @@ func (d *Dnsmasq) Reload() error {
 	}
 	cmd := exec.Command("systemctl", "reload", "dnsmasq")
 	cmd.Run()
-	log.Printf("[Dnsmasq] 已重载")
+	config.DebugLog("[Dnsmasq] 已重载")
 	return nil
 }

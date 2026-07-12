@@ -16,13 +16,19 @@ import (
 // ProxyHandler 只处理代理逻辑
 func ProxyHandler(cfg *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// 从 context 取 server 地址（由 startServer 注入）
+		serverAddr := "unknown"
+		if addr, ok := r.Context().Value("server_addr").(string); ok {
+			serverAddr = addr
+		}
+
 		host := strings.Split(r.Host, ":")[0]
 		host = strings.TrimSpace(host)
 		target := rules.MatchRule(host, r.TLS != nil, cfg)
 
 		if target == "" {
 			// DIRECT 模式：查真实 IP
-			log.Printf("[Proxy] DIRECT 模式: %s (TLS=%v)", host, r.TLS != nil)
+			log.Printf("[Proxy] [%s] DIRECT %s (TLS=%v)", serverAddr, host, r.TLS != nil)
 
 			hostOnly := strings.Split(host, ":")[0]
 			isLocal := false
@@ -74,9 +80,9 @@ func ProxyHandler(cfg *config.Config) http.HandlerFunc {
 			if r.TLS != nil {
 				target = fmt.Sprintf("https://%s:%s", realIP, port)
 			}
-			log.Printf("[Proxy] ✅ DIRECT %s → %s", host, target)
-		} else {
-			log.Printf("[Proxy] ✅ 规则匹配 %s → %s (客户端%s)", host, target, map[bool]string{true: "HTTPS", false: "HTTP"}[r.TLS != nil])
+			log.Printf("[Proxy] [%s] ✅ DIRECT %s → %s", serverAddr, host, target)
+			} else {
+			log.Printf("[Proxy] [%s] ✅ 规则匹配 %s → %s (客户端%s)", serverAddr, host, target, map[bool]string{true: "HTTPS", false: "HTTP"}[r.TLS != nil])
 		}
 
 		proxy := &httputil.ReverseProxy{

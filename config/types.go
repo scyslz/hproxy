@@ -46,4 +46,5 @@ type Config struct {
 	Interval     string              `json:"interval,omitempty"`     // 定时更新间隔
 	DNS          *DNSProviderConfig `json:"dns,omitempty"`
 	RuleSources  []RuleSource        `json:"rule_sources,omitempty"`
+	Debug        bool                `json:"debug,omitempty"`        // 是否打印调试日志
 }
