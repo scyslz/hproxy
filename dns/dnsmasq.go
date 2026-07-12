@@ -123,9 +123,9 @@ func (d *Dnsmasq) Reload() error {
 	if d.ConfFile == "" {
 		return nil
 	}
-	cmd := exec.Command("systemctl", "reload", "dnsmasq")
+	cmd := exec.Command("sh", "-c", "kill -HUP $(pidof dnsmasq)")
 	if err := cmd.Run(); err != nil {
-		log.Printf("[Dnsmasq] 重载失败: %v", err)
+		config.DebugLog("[Dnsmasq] 重载失败（dnsmasq 可能未运行）: %v", err)
 	}
 	config.DebugLog("[Dnsmasq] 已重载")
 	return nil

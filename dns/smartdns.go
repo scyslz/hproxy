@@ -200,9 +200,9 @@ func (s *SmartDNS) Reload() error {
 	if s.ConfFile == "" {
 		return nil
 	}
-	cmd := exec.Command("kill", "-HUP", "$(pidof smartdns)")
+	cmd := exec.Command("sh", "-c", "kill -HUP $(pidof smartdns)")
 	if err := cmd.Run(); err != nil {
-		log.Printf("[SmartDNS] 重载失败: %v", err)
+		config.DebugLog("[SmartDNS] 重载失败（smartdns 可能未运行）: %v", err)
 	}
 	config.DebugLog("[SmartDNS] 已重载")
 	return nil
