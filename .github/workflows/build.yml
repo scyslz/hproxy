@@ -41,13 +41,21 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
         run: |
-          go build -ldflags="-s -w" \
-            -o hproxy-${{ matrix.name }} .
+          go build -ldflags="-s -w" -o hproxy .
+          # ensure start script is executable (if present)
+          chmod +x start.sh || true
+          # package binary + config files + start script into a single archive
+          tar -czf hproxy-${{ matrix.name }}.tar.gz \
+            hproxy \
+            config.json \
+            config.json.example \
+            rules.json \
+            start.sh
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            hproxy-${{ matrix.name }}
+            hproxy-${{ matrix.name }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
