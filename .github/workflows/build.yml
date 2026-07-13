@@ -7,6 +7,11 @@ on:
   release:
     types: [published, released]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g., v1.2.3). If empty uses the triggered ref.'
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -27,8 +32,20 @@ jobs:
             name: linux-arm64
 
     steps:
+      - name: Resolve checkout ref
+        id: resolve_ref
+        run: |
+          echo "event_name=${GITHUB_EVENT_NAME}"
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.tag }}" != "" ]; then
+            echo "ref=refs/tags/${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "ref=${GITHUB_REF}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.resolve_ref.outputs.ref }}
 
       - name: Setup Go
         uses: actions/setup-go@v5
