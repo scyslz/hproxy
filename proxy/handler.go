@@ -32,7 +32,7 @@ func ProxyHandler(cfg *config.Config) http.HandlerFunc {
 			hostOnly := strings.Split(host, ":")[0]
 			isLocal := false
 			if hostOnly == "127.0.0.1" || hostOnly == "::1" || hostOnly == "localhost" ||
-				strings.HasPrefix(hostOnly, cfg.LanIP) ||) {
+				strings.HasPrefix(hostOnly, cfg.LanIP ) {
 				isLocal = true
 			}
 
