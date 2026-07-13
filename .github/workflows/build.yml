@@ -72,26 +72,6 @@ jobs:
             rules.json \
             start.sh
 
-      - name: Delete existing release assets (if any)
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const tag = process.env.GITHUB_REF.replace('refs/tags/','')
-            try {
-              const release = await github.rest.repos.getReleaseByTag({ owner: context.repo.owner, repo: context.repo.repo, tag })
-              const assets = await github.rest.repos.listReleaseAssets({ owner: context.repo.owner, repo: context.repo.repo, release_id: release.data.id })
-              for (const asset of assets.data) {
-    
-                  await github.rest.repos.deleteReleaseAsset({ owner: context.repo.owner, repo: context.repo.repo, asset_id: asset.id })
-      
-              }
-            } catch (err) {
-              // release may not exist yet, ignore
-              core.info('No existing release found or error deleting assets: ' + err.message)
-            }
-        env:
-          MATRIX_NAME: ${{ matrix.name }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
