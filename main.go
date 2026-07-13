@@ -38,22 +38,6 @@ func main() {
 	config.SetDebug(cfg.Debug)
 	dnsProvider, _ := initDNSProvider(cfg)
 
-	// 初始更新 DNS
-	if dnsProvider != nil {
-		domains := make(map[string]string)
-		ip := cfg.LanIP
-		if ip == "" {
-			ip = "192.168.100.1"  // 默认值
-		}
-		for d := range rules.Rules {
-			domains[d] = ip
-		}
-		if err := dnsProvider.UpdateDomains(domains); err != nil {
-			log.Printf("[DNS] 初始更新失败: %v", err)
-		}
-		dnsProvider.Reload()
-	}
-
 	// 启动定时更新
 	if dnsProvider != nil {
 		rules.StartScheduler(cfg, dnsProvider)
