@@ -55,24 +55,6 @@ jobs:
             rules.json \
             start.sh
 
-      - name: Delete existing release for tag (if any)
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -e
-          TAG="${{ github.ref_name }}"
-          API="https://api.github.com/repos/${{ github.repository }}"
-          echo "Checking for existing release for tag $TAG"
-          resp=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API/releases/tags/$TAG")
-          release_id=$(echo "$resp" | sed -n 's/.*"id":[[:space:]]*\([0-9]*\).*/\1/p' || true)
-          if [ -n "$release_id" ]; then
-            echo "Deleting existing release id $release_id"
-            curl -s -X DELETE -H "Authorization: token $GITHUB_TOKEN" "$API/releases/$release_id"
-          else
-            echo "No existing release found for tag $TAG"
-          fi
-
       - name: Delete existing release assets (if any)
         uses: actions/github-script@v6
         with:
