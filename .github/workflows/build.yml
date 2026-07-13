@@ -4,14 +4,7 @@ on:
   push:
     tags:
       - 'v*'
-  release:
-    types: [published, released]
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Tag to build (e.g., v1.2.3). If empty uses the triggered ref.'
-        required: false
-        default: ''
+
 
 permissions:
   contents: write
