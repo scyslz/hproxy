@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"log"
 
 	"hproxy/config"
 )
@@ -68,7 +69,7 @@ func (c *RuleChain) LoadAll() bool {
 	for _, provider := range c.providers {
 		rules, c, err := provider.Load()
 		if err != nil {
-			config.DebugLog("[RuleChain] 来源 %s 加载失败: %v", provider.Name(), err)
+			log.Printf("[RuleChain] 来源 %s 加载失败: %v", provider.Name(), err)
 			continue
 		}
 		if c {
@@ -78,8 +79,8 @@ func (c *RuleChain) LoadAll() bool {
 		mergeRules(rules, provider.Name())
 	}
 
-	config.DebugLog("[RuleChain] 加载完成: 精确=%d, 通配=%d",
-		len(Rules), len(WildRules))
+	log.Printf("[RuleChain] 加载完成: 精确=%d, 通配=%d, changed=%v",
+		len(Rules), len(WildRules), changed)
 	return changed
 }
 

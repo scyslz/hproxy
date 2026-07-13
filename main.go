@@ -48,7 +48,7 @@ func main() {
 		go func() {
 			adminHandler := admin.Handler(cfg)
 			log.Printf("[Admin] 管理接口监听 :%s", cfg.AdminPort)
-			if err := http.ListenAndServe(":"+cfg.AdminPort, adminHandler); err != nil {
+			if err := http.ListenAndServe("0.0.0.0:"+cfg.AdminPort, adminHandler); err != nil {
 				log.Printf("[Admin] 监听失败: %v", err)
 			}
 		}()

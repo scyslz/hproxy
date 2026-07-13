@@ -32,16 +32,14 @@ func ProxyHandler(cfg *config.Config) http.HandlerFunc {
 			hostOnly := strings.Split(host, ":")[0]
 			isLocal := false
 			if hostOnly == "127.0.0.1" || hostOnly == "::1" || hostOnly == "localhost" ||
-				strings.HasPrefix(hostOnly, cfg.LanIP) ||
-				strings.HasPrefix(hostOnly, "10.0.") ||
-				strings.HasPrefix(hostOnly, "172.17.") {
+				strings.HasPrefix(hostOnly, cfg.LanIP) ||) {
 				isLocal = true
 			}
 
 			if isLocal {
 				w.Header().Set("Connection", "close")
 				http.Error(w, "503 Loop detected (local address)", http.StatusServiceUnavailable)
-				log.Printf("[Proxy] [%s] ❌ 检测到本地地址: %s", serverAddr, host)
+				log.Printf("[Proxy] [%s] ❌ 检测到本地地址: %s, Path: %s", serverAddr, host, r.URL.Path)
 				return
 			}
 
