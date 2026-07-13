@@ -21,17 +21,17 @@ type Dnsmasq struct {
 }
 
 // NewDnsmasq 创建 Dnsmasq 实例
-func NewDnsmasq(config map[string]interface{}) (*Dnsmasq, error) {
+func NewDnsmasq(cfg map[string]interface{}) (*Dnsmasq, error) {
 	d := &Dnsmasq{
 		lastDomains: make(map[string]string),
 	}
-	if v, ok := config["conf_file"]; ok {
+	if v, ok := cfg["conf_file"]; ok {
 		d.ConfFile = v.(string)
 	}
-	if v, ok := config["output_file"]; ok {
+	if v, ok := cfg["output_file"]; ok {
 		d.OutputFile = v.(string)
 	}
-	if v, ok := config["reload_cmd"]; ok {
+	if v, ok := cfg["reload_cmd"]; ok {
 		d.ReloadCmd = v.(string)
 	}
 	return d, nil

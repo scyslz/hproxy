@@ -205,7 +205,7 @@ GOOS=linux GOARCH=arm64 go build -o hproxy-arm64
 - `GET /rules` - 查看规则（含来源信息）
 - `POST /reload` - 重载配置和规则
 - `GET /logs` - 查看最新日志内容
-- `POST /logs/start` - 快速归档（当前日志归档为 `YYYY-MM-DD_001.log`，创建新文件）
+- `POST /logs/new` - 快速归档（当前日志归档为 `YYYY-MM-DD_001.log`，创建新文件）
 
 ### 示例
 

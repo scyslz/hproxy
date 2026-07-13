@@ -207,7 +207,7 @@ func (s *SmartDNS) Reload() error {
 	}
 	cmd := exec.Command("sh", "-c", s.ReloadCmd)
 	if err := cmd.Run(); err != nil {
-		config.DebugLog("[SmartDNS] 重载失败（smartdns 可能未运行）: %v", err)
+		log.Printf("[SmartDNS] 重载失败（smartdns 可能未运行）: %v", err)
 	}
 	config.DebugLog("[SmartDNS] 已重载")
 	return nil

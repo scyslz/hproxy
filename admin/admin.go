@@ -25,7 +25,7 @@ func Handler(c *config.Config) http.Handler {
 	mux.HandleFunc("/config", configHandler(cfg))
 	mux.HandleFunc("/rules", rulesHandler)
 	mux.HandleFunc("/logs", logsHandler)
-	mux.HandleFunc("/logs/start", logsStartHandler)
+	mux.HandleFunc("/logs/new", logsStartHandler)
 	mux.HandleFunc("/reload", reloadHandler(cfg))
 
 	return mux
