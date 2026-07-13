@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - 'v*'
+  release:
+    types: [published, released]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -51,6 +54,45 @@ jobs:
             config.json.example \
             rules.json \
             start.sh
+
+      - name: Delete existing release for tag (if any)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          TAG="${{ github.ref_name }}"
+          API="https://api.github.com/repos/${{ github.repository }}"
+          echo "Checking for existing release for tag $TAG"
+          resp=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "$API/releases/tags/$TAG")
+          release_id=$(echo "$resp" | sed -n 's/.*"id":[[:space:]]*\([0-9]*\).*/\1/p' || true)
+          if [ -n "$release_id" ]; then
+            echo "Deleting existing release id $release_id"
+            curl -s -X DELETE -H "Authorization: token $GITHUB_TOKEN" "$API/releases/$release_id"
+          else
+            echo "No existing release found for tag $TAG"
+          fi
+
+      - name: Delete existing release assets (if any)
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const tag = process.env.GITHUB_REF.replace('refs/tags/','')
+            try {
+              const release = await github.rest.repos.getReleaseByTag({ owner: context.repo.owner, repo: context.repo.repo, tag })
+              const assets = await github.rest.repos.listReleaseAssets({ owner: context.repo.owner, repo: context.repo.repo, release_id: release.data.id })
+              for (const asset of assets.data) {
+    
+                  await github.rest.repos.deleteReleaseAsset({ owner: context.repo.owner, repo: context.repo.repo, asset_id: asset.id })
+      
+              }
+            } catch (err) {
+              // release may not exist yet, ignore
+              core.info('No existing release found or error deleting assets: ' + err.message)
+            }
+        env:
+          MATRIX_NAME: ${{ matrix.name }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
