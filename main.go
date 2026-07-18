@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"hproxy/admin"
+	"hproxy/certgen"
 	"hproxy/config"
 	"hproxy/dns"
 	"hproxy/proxy"
@@ -63,6 +64,7 @@ func main() {
 	}
 
 	log.Printf("=== 全部服务已启动 ===")
+	log.Printf("[CertGen] 动态证书已启用，CA证书路径: %s (请安装信任此CA)", certgen.CACertPath())
 	select {}
 }
 
@@ -199,8 +201,11 @@ func startServer(addr string, handler http.HandlerFunc, cfg *config.Config) {
 			defer ln.Close()
 			
 			// 创建 TLS 配置
+			tlsCertsCopy := tlsCerts // 供闭包使用
 			tlsConfig := &tls.Config{
-				Certificates: tlsCerts,
+				GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+					return certgen.GetCertificate(tlsCertsCopy, hello)
+				},
 			}
 			
 			// 创建 TLS 监听器
@@ -292,7 +297,9 @@ func handleConnection(conn net.Conn, handler http.HandlerFunc, tlsCerts []tls.Ce
 	// 判断 TLS
 	if isTLS(peek[:n]) {
 		serveConn = tls.Server(bufferedConn, &tls.Config{
-			Certificates: tlsCerts,
+			GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+				return certgen.GetCertificate(tlsCerts, hello)
+			},
 		})
 	}
 
