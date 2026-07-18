@@ -47,8 +47,8 @@ func main() {
 	if cfg.AdminPort != "" {
 		go func() {
 			adminHandler := admin.Handler(cfg)
-			log.Printf("[Admin] 管理接口监听 :%s", cfg.AdminPort)
-			if err := http.ListenAndServe("0.0.0.0:"+cfg.AdminPort, adminHandler); err != nil {
+			log.Printf("[Admin] 管理接口监听 http://%s:%s", cfg.LanIP, cfg.AdminPort)
+			if err := http.ListenAndServe(cfg.LanIP+":"+cfg.AdminPort, adminHandler); err != nil {
 				log.Printf("[Admin] 监听失败: %v", err)
 			}
 		}()
@@ -64,6 +64,31 @@ func main() {
 
 	log.Printf("=== 全部服务已启动 ===")
 	select {}
+}
+
+// loadAllCerts 加载所有证书
+func loadAllCerts(cfg *config.Config) ([]tls.Certificate, error) {
+	var certs []tls.Certificate
+	
+	certConfigs := cfg.ListCerts()
+	if len(certConfigs) == 0 {
+		return nil, fmt.Errorf("未配置任何证书")
+	}
+	
+	for i, certCfg := range certConfigs {
+		tlsCert, err := tls.LoadX509KeyPair(certCfg.Cert, certCfg.Key)
+		if err != nil {
+			log.Printf("[Cert] 加载证书 %s[%d] 失败: %v", certCfg.Name, i, err)
+			continue
+		}
+		certs = append(certs, tlsCert)
+	}
+	
+	if len(certs) == 0 {
+		return nil, fmt.Errorf("未能加载任何证书")
+	}
+	
+	return certs, nil
 }
 
 func setFDLimit() {
@@ -83,14 +108,16 @@ func loadConfig() (*config.Config, error) {
 }
 
 func loadCert(cfg *config.Config) error {
-	if cfg.Cert != "" && cfg.Key != "" {
-		if _, err := os.Stat(cfg.Cert); err != nil {
-			return fmt.Errorf("证书文件不存在: %s", cfg.Cert)
+	// 验证所有证书文件存在
+	for i, cert := range cfg.Certs {
+		if _, err := os.Stat(cert.Cert); err != nil {
+			return fmt.Errorf("证书 %s[%d] 不存在: %s", cert.Name, i, cert.Cert)
 		}
-		if _, err := os.Stat(cfg.Key); err != nil {
-			return fmt.Errorf("密钥文件不存在: %s", cfg.Key)
+		if _, err := os.Stat(cert.Key); err != nil {
+			return fmt.Errorf("密钥 %s[%d] 不存在: %s", cert.Name, i, cert.Key)
 		}
 	}
+	
 	return nil
 }
 
@@ -141,10 +168,6 @@ func startServer(addr string, handler http.HandlerFunc, cfg *config.Config) {
 		handler(w, r)
 	})
 
-	// 获取证书
-	cert := cfg.Cert
-	key := cfg.Key
-
 	switch scheme {
 	case "http":
 		go func() {
@@ -154,19 +177,49 @@ func startServer(addr string, handler http.HandlerFunc, cfg *config.Config) {
 			}
 		}()
 	case "https":
-		if cert == "" || key == "" {
+		if len(cfg.Certs) == 0 {
 			log.Printf("[Server] %s HTTPS 需要证书", realAddr)
 			return
 		}
+		
 		go func() {
-			log.Printf("[Server] HTTPS %s", realAddr)
-			if err := http.ListenAndServeTLS(realAddr, cert, key, wrappedHandler); err != nil {
+			// 加载所有证书
+			tlsCerts, err := loadAllCerts(cfg)
+			if err != nil {
+				log.Printf("[Server] %s TLS 证书加载失败: %v", realAddr, err)
+				return
+			}
+			
+			// 创建 TCP 监听器
+			ln, err := net.Listen("tcp", realAddr)
+			if err != nil {
 				log.Printf("[Server] %s 监听失败: %v", realAddr, err)
+				return
+			}
+			defer ln.Close()
+			
+			// 创建 TLS 配置
+			tlsConfig := &tls.Config{
+				Certificates: tlsCerts,
+			}
+			
+			// 创建 TLS 监听器
+			tlsListener := tls.NewListener(ln, tlsConfig)
+			defer tlsListener.Close()
+			
+			log.Printf("[Server] HTTPS %s (多证书支持, %d个证书)", realAddr, len(tlsCerts))
+			
+			// 启动 HTTP 服务器
+			server := &http.Server{
+				Handler: wrappedHandler,
+			}
+			if err := server.Serve(tlsListener); err != nil {
+				log.Printf("[Server] %s 服务失败: %v", realAddr, err)
 			}
 		}()
 	case "auto":
 		// 同一个端口同时处理 HTTP 和 HTTPS
-		if cert == "" || key == "" {
+		if len(cfg.Certs) == 0 {
 			log.Printf("[Server] %s auto 需要证书，只启动 HTTP", realAddr)
 			go func() {
 				log.Printf("[Server] HTTP %s", realAddr)
@@ -187,10 +240,10 @@ func startServer(addr string, handler http.HandlerFunc, cfg *config.Config) {
 			}
 			defer ln.Close()
 			
-			// 加载证书
-			tlsCert, err := tls.LoadX509KeyPair(cert, key)
+			// 加载所有证书
+			tlsCerts, err := loadAllCerts(cfg)
 			if err != nil {
-				log.Printf("[Server] TLS 证书加载失败: %v", err)
+				log.Printf("[Server] %s 加载证书失败: %v", realAddr, err)
 				return
 			}
 			
@@ -203,14 +256,14 @@ func startServer(addr string, handler http.HandlerFunc, cfg *config.Config) {
 				}
 				
 				// 判断是 HTTP 还是 HTTPS
-					go handleConnection(conn, handler, &tlsCert, realAddr)
+					go handleConnection(conn, handler, tlsCerts, realAddr)
 			}
 		}()
 	}
 }
 
 // handleConnection 处理连接，根据第一个字节判断是 HTTP 还是 HTTPS
-func handleConnection(conn net.Conn, handler http.HandlerFunc, tlsCert *tls.Certificate, serverAddr string) {
+func handleConnection(conn net.Conn, handler http.HandlerFunc, tlsCerts []tls.Certificate, serverAddr string) {
 	defer conn.Close()
 
 	// 读取前几个字节用于判断协议
@@ -239,9 +292,7 @@ func handleConnection(conn net.Conn, handler http.HandlerFunc, tlsCert *tls.Cert
 	// 判断 TLS
 	if isTLS(peek[:n]) {
 		serveConn = tls.Server(bufferedConn, &tls.Config{
-			Certificates: []tls.Certificate{
-				*tlsCert,
-			},
+			Certificates: tlsCerts,
 		})
 	}
 

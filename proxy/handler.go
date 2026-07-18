@@ -39,7 +39,7 @@ func ProxyHandler(cfg *config.Config) http.HandlerFunc {
 			if isLocal {
 				w.Header().Set("Connection", "close")
 				http.Error(w, "503 Loop detected (local address)", http.StatusServiceUnavailable)
-				log.Printf("[Proxy] [%s] ❌ 检测到本地地址: %s, Path: %s", serverAddr, host, r.URL.Path)
+				log.Printf("[Proxy] [%s] ❌ 检测到本地地址: %s, Path: %s", serverAddr, r.Host, r.URL.Path)
 				return
 			}
 

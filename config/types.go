@@ -34,14 +34,20 @@ type DNSProviderConfig struct {
 	Config   map[string]interface{} `json:"config"`
 }
 
+// CertConfig 证书配置
+type CertConfig struct {
+	Name string `json:"name,omitempty"` // 证书名称（用于日志标识）
+	Cert string `json:"cert"`           // 证书文件路径
+	Key  string `json:"key"`            // 密钥文件路径
+}
+
 // Config 主配置
 type Config struct {
 	ConfigFile   string              `json:"-"`
 	LanIP        string              `json:"lan_ip,omitempty"`     // 内网 IP，如 192.168.100.1
 	AdminPort    string              `json:"admin_port,omitempty"`   // 管理接口端口
 	LogFile      string              `json:"log_file,omitempty"`     // 日志文件路径
-	Cert         string              `json:"cert,omitempty"`
-	Key          string              `json:"key,omitempty"`
+	Certs        []CertConfig        `json:"certs,omitempty"`       // 多证书配置
 	ProxyServers []string            `json:"proxy_servers,omitempty"` // 代理监听地址
 	Interval     string              `json:"interval,omitempty"`     // 定时更新间隔
 	DNS          *DNSProviderConfig `json:"dns,omitempty"`

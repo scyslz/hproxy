@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 	"log"
 
@@ -62,9 +63,9 @@ func (c *RuleChain) Add(provider RuleProvider) {
 func (c *RuleChain) LoadAll() bool {
 	changed := false
 
-	// 清空旧规则
-	Rules = make(map[string]config.Rule)
-	WildRules = make(map[string]config.Rule)
+	// 使用临时变量加载规则
+	newRules := make(map[string]config.Rule)
+	newWildRules := make(map[string]config.Rule)
 
 	for _, provider := range c.providers {
 		rules, c, err := provider.Load()
@@ -75,31 +76,42 @@ func (c *RuleChain) LoadAll() bool {
 		if c {
 			changed = true
 		}
-		// 合并规则（自动处理通配符）
-		mergeRules(rules, provider.Name())
+		// 合并规则到临时 map（自动处理通配符）
+		mergeRulesInto(rules, provider.Name(), newRules, newWildRules)
 	}
 
+	// 加载成功后，一次性替换全局变量（加锁保护）
+	rulesMutex.Lock()
+	Rules = newRules
+	WildRules = newWildRules
+	rulesMutex.Unlock()
+
 	log.Printf("[RuleChain] 加载完成: 精确=%d, 通配=%d, changed=%v",
-		len(Rules), len(WildRules), changed)
+		len(newRules), len(newWildRules), changed)
 	return changed
 }
 
-// mergeRules 将规则合并到全局 map，自动处理通配符
+// mergeRulesInto 将规则合并到指定的 map，自动处理通配符
 // 支持格式: *.domain.com 或 *aa.domain.com
-func mergeRules(rules map[string]config.Rule, sourceName string) {
+func mergeRulesInto(rules map[string]config.Rule, sourceName string, destRules, destWildRules map[string]config.Rule) {
 	for host, rule := range rules {
 		if strings.HasPrefix(host, "*") {
 			// 通配符规则：去掉开头的 *，保留后面的部分作为匹配后缀
 			wildcard := strings.TrimPrefix(host, "*")
 			rule.Source = sourceName
-			WildRules[wildcard] = rule
+			destWildRules[wildcard] = rule
 			config.DebugLog("[RuleChain] 通配符规则: %s (来源: %s)", wildcard, sourceName)
 		} else {
 			// 普通规则
 			rule.Source = sourceName
-			Rules[host] = rule
+			destRules[host] = rule
 		}
 	}
+}
+
+// mergeRules 将规则合并到全局 map，自动处理通配符（已废弃，用 mergeRulesInto 替代）
+func mergeRules(rules map[string]config.Rule, sourceName string) {
+	mergeRulesInto(rules, sourceName, Rules, WildRules)
 }
 
 // --- LuckyAPISource ---
@@ -224,8 +236,9 @@ func (s *LocalFileSource) compareRules(newRules map[string]config.Rule) bool {
 // --- 全局变量 ---
 
 var (
-	Rules     map[string]config.Rule  // 精确域名规则
-	WildRules map[string]config.Rule  // 通配符规则
+	Rules        map[string]config.Rule  // 精确域名规则
+	WildRules    map[string]config.Rule  // 通配符规则
+	rulesMutex   sync.RWMutex            // 保护 Rules 和 WildRules 的并发访问
 )
 
 func init() {

@@ -24,14 +24,16 @@ func Load(path string) (*Config, error) {
 
 	cfg.ConfigFile = path
 
-	// 处理相对路径：证书路径相对于 config.json 所在目录
+	// 处理证书文件相对路径（相对于 config.json 所在目录）
 	if cfg.ConfigFile != "" {
 		configDir := filepath.Dir(cfg.ConfigFile)
-		if !filepath.IsAbs(cfg.Cert) && cfg.Cert != "" {
-			cfg.Cert = filepath.Join(configDir, cfg.Cert)
-		}
-		if !filepath.IsAbs(cfg.Key) && cfg.Key != "" {
-			cfg.Key = filepath.Join(configDir, cfg.Key)
+		for i := range cfg.Certs {
+			if !filepath.IsAbs(cfg.Certs[i].Cert) && cfg.Certs[i].Cert != "" {
+				cfg.Certs[i].Cert = filepath.Join(configDir, cfg.Certs[i].Cert)
+			}
+			if !filepath.IsAbs(cfg.Certs[i].Key) && cfg.Certs[i].Key != "" {
+				cfg.Certs[i].Key = filepath.Join(configDir, cfg.Certs[i].Key)
+			}
 		}
 	}
 
@@ -50,4 +52,9 @@ func (c *Config) ReloadIfChanged() bool {
 	}
 	// TODO: 实现配置热重载（需要记录上次修改时间）
 	return false
+}
+
+// ListCerts 列出所有已配置的证书
+func (c *Config) ListCerts() []CertConfig {
+	return c.Certs
 }

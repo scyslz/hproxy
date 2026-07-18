@@ -12,6 +12,10 @@ func MatchRule(host string, clientHTTPS bool, cfg *config.Config) string {
 	host = strings.Split(host, ":")[0]
 	host = strings.TrimSpace(host)
 
+	// 用读锁保护对全局规则的访问
+	rulesMutex.RLock()
+	defer rulesMutex.RUnlock()
+
 	// 1. 检查完整域名规则
 	if rule, ok := Rules[host]; ok {
 		target := ResolveTarget(rule, clientHTTPS)

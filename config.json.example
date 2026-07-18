@@ -1,8 +1,13 @@
 {
   "lan_ip": "192.168.100.1",
   "admin_port": "18080",
-  "cert": "lucky-multi.crt",
-  "key": "lucky-multi.key",
+  "certs": [
+    {
+      "name": "default",
+      "cert": "lucky-multi.crt",
+      "key": "lucky-multi.key"
+    }
+  ],
   "proxy_servers": [
     "http://:80",
     "https://:443",

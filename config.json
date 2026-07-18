@@ -1,8 +1,13 @@
 {
   "lan_ip": "192.168.100.1",
   "log_file": "/tmp/hproxy/hproxy.log",
-  "cert": "lucky-multi.crt",
-  "key": "lucky-multi.key",
+  "certs": [
+    {
+      "name": "default",
+      "cert": "lucky-multi.crt",
+      "key": "lucky-multi.key"
+    }
+  ],
   "admin_port": "18080",
   "proxy_servers": [
     "http://:80",
