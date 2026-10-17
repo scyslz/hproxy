@@ -69,10 +69,13 @@ func (s *Scheduler) update() {
 		for d := range Rules {
 			domains[d] = ip
 		}
-		if err := s.dnsProvider.UpdateDomains(domains); err != nil {
+		changed, err := s.dnsProvider.UpdateDomains(domains)
+		if err != nil {
 			config.DebugLog("[Scheduler] DNS 更新失败: %v", err)
 		}
-		s.dnsProvider.Reload()
+		if changed {
+			s.dnsProvider.Reload()
+		}
 	}
 }
 

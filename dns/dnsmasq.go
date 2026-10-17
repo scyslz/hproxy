@@ -41,13 +41,12 @@ func (d *Dnsmasq) Name() string {
 	return "dnsmasq"
 }
 
-func (d *Dnsmasq) UpdateDomains(domains map[string]string) error {
+func (d *Dnsmasq) UpdateDomains(domains map[string]string) (bool, error) {
 	// 变更检测
-	if d.compareDomains(domains) {
+	if d.compareDomains(domains) && !d.isConfigModified() {
 		config.DebugLog("[Dnsmasq] 域名无变化，跳过更新")
-		return nil
+		return false, nil
 	}
-
 	if d.isConfigModified() {
 		config.DebugLog("[Dnsmasq] 配置文件被外部修改，强制更新")
 	}
@@ -60,7 +59,7 @@ func (d *Dnsmasq) UpdateDomains(domains map[string]string) error {
 	content := strings.Join(lines, "\n") + "\n"
 	if err := os.WriteFile(d.OutputFile, []byte(content), 0644); err != nil {
 		log.Printf("[Dnsmasq] 写文件失败 %s: %v", d.OutputFile, err)
-		return err
+		return false, err
 	}
 
 	d.lastDomains = make(map[string]string)
@@ -72,7 +71,7 @@ func (d *Dnsmasq) UpdateDomains(domains map[string]string) error {
 	}
 
 	log.Printf("[Dnsmasq] 已更新 %d 条域名到 %s", len(domains), d.OutputFile)
-	return d.ensureConfig()
+	return true, d.ensureConfig()
 }
 
 func (d *Dnsmasq) compareDomains(domains map[string]string) bool {

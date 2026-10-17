@@ -8,7 +8,8 @@ import (
 // DNSProvider 接口
 type DNSProvider interface {
 	Name() string
-	UpdateDomains(domains map[string]string) error
+	// UpdateDomains 更新域名配置，返回是否产生了实际变更（需要重载）
+	UpdateDomains(domains map[string]string) (bool, error)
 	Reload() error
 }
 

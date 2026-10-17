@@ -42,7 +42,7 @@ func (s *SmartDNS) Name() string {
 }
 
 // UpdateDomains 更新域名配置（带变更检测）
-func (s *SmartDNS) UpdateDomains(domains map[string]string) error {
+func (s *SmartDNS) UpdateDomains(domains map[string]string) (bool, error) {
 	needUpdate := false
 
 	// 1. 检查域名集合是否有变化
@@ -65,7 +65,7 @@ func (s *SmartDNS) UpdateDomains(domains map[string]string) error {
 
 	if !needUpdate {
 		config.DebugLog("[SmartDNS] 无变化，跳过更新")
-		return nil
+		return false, nil
 	}
 
 	// 4. 生成配置内容
@@ -98,7 +98,7 @@ func (s *SmartDNS) UpdateDomains(domains map[string]string) error {
 	// 5. 写文件
 	if err := os.WriteFile(s.OutputFile, []byte(content), 0644); err != nil {
 		log.Printf("[SmartDNS] 写文件失败 %s: %v", s.OutputFile, err)
-		return err
+		return false, err
 	}
 
 	// 确保数据刷盘后，再读文件时间
@@ -117,7 +117,7 @@ func (s *SmartDNS) UpdateDomains(domains map[string]string) error {
 	log.Printf("[SmartDNS] 已更新 %d 条域名到 %s", len(domains), s.OutputFile)
 
 	// 7. 确保主配置引用了生成文件
-	return s.ensureConfig()
+	return true, s.ensureConfig()
 }
 
 // compareDomains 比较域名集合是否有变化
