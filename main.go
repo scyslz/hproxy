@@ -146,7 +146,16 @@ func initDNSProvider(cfg *config.Config) (dns.DNSProvider, error) {
 	if cfg.DNS == nil {
 		return nil, fmt.Errorf("未配置 DNS")
 	}
-	return dns.NewProvider(cfg.DNS.Config)
+	// provider 字段在外层 DNSProviderConfig 上，必须合并进内层 map，
+	// 否则 NewProvider 取不到 provider，永远回落到 smartdns 默认值。
+	merged := make(map[string]interface{}, len(cfg.DNS.Config)+1)
+	for k, v := range cfg.DNS.Config {
+		merged[k] = v
+	}
+	if _, ok := merged["provider"]; !ok && cfg.DNS.Provider != "" {
+		merged["provider"] = cfg.DNS.Provider
+	}
+	return dns.NewProvider(merged)
 }
 
 // parseAddr 解析地址，返回协议和地址
